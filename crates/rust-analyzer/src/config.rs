@@ -4096,4 +4096,18 @@ mod tests {
             matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
         );
     }
+
+    #[test]
+    fn test_default_comments_enabled() {
+        let config = Config::new(
+            AbsPathBuf::assert(project_root()), 
+            Default::default(), 
+            vec![], 
+            None
+        );
+        let highlight_config = config.highlighting_config();
+        
+        // Comments should be enabled by default
+        assert!(highlight_config.comments, "Comments should be enabled by default");
+    }
 }

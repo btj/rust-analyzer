@@ -1584,3 +1584,76 @@ fn main() {
         false,
     );
 }
+
+#[test]
+fn test_config_integration() {
+    let (analysis, file_id) = fixture::file(
+        r#"
+// This is a regular comment
+/// This is a doc comment  
+fn main() {
+    // Another comment
+    println!("Hello, world!");
+}
+"#.trim(),
+    );
+
+    // Test with comments enabled
+    let hl_ranges_enabled = analysis.with_db(|db| {
+        crate::syntax_highlighting::highlight(
+            db,
+            HighlightConfig {
+                strings: true,
+                comments: true, // Enable comments
+                punctuation: true,
+                specialize_punctuation: true,
+                specialize_operator: true,
+                operator: true,
+                inject_doc_comment: true,
+                macro_bang: true,
+                syntactic_name_ref_highlighting: false,
+            },
+            file_id,
+            None,
+        )
+    }).unwrap();
+
+    // Test with comments disabled
+    let hl_ranges_disabled = analysis.with_db(|db| {
+        crate::syntax_highlighting::highlight(
+            db,
+            HighlightConfig {
+                strings: true,
+                comments: false, // Disable comments
+                punctuation: true,
+                specialize_punctuation: true,
+                specialize_operator: true,
+                operator: true,
+                inject_doc_comment: true,
+                macro_bang: true,
+                syntactic_name_ref_highlighting: false,
+            },
+            file_id,
+            None,
+        )
+    }).unwrap();
+
+    // Count comment tokens in each case
+    let comment_count_enabled = hl_ranges_enabled.iter()
+        .filter(|r| r.highlight.tag.to_string().contains("comment"))
+        .count();
+    
+    let comment_count_disabled = hl_ranges_disabled.iter()
+        .filter(|r| r.highlight.tag.to_string().contains("comment"))
+        .count();
+
+    // When comments are enabled, we should see comment tokens
+    assert!(comment_count_enabled > 0, "Expected comment tokens when comments are enabled");
+    
+    // When comments are disabled, we should see no comment tokens
+    assert_eq!(comment_count_disabled, 0, "Expected no comment tokens when comments are disabled");
+    
+    // The disabled version should have fewer highlighted ranges overall
+    assert!(hl_ranges_disabled.len() < hl_ranges_enabled.len(), 
+            "Expected fewer highlight ranges when comments are disabled");
+}
